@@ -1,0 +1,71 @@
+---
+title: "project-pml"
+output: html_document
+---
+Let us load the data from accelerometers on the belt, forearm, arm, and dumbell of the 6 participants.
+```{r}
+setwd('D:/Courses/pml')
+data<-read.csv('pml-training.csv')
+```
+
+Since the features: X,timestamps,new_window,num_window, will not presumably affect the quality of the exercises, we remove all these features from the dataset. 
+
+Then we summarize the data:
+```{r}
+summary<-summary(data)       
+```
+
+It is clear that the columns containing 19216 blank/NA values out of 19622 values will not be of much help for the analysis and prediction. Since the majority of the values in this colums are undefined it is easier to remove these values without losing much of information and get an easier prediction.
+
+```{r}
+# removing irrelevant data for better performance and analysis.
+newData<-data[c(7:11,37:49,60:68,84:86,102,113:124,140,151:160)]    
+```
+
+Let us divide the data into two halves, one for training and the other for testing/validation.
+
+```{r}
+library(caret) 
+# we set p=0.5 instead of 0.7 to avoid the possibility of overfitting
+inTrain<-createDataPartition(y=newData$classe,p=0.5,list=FALSE)
+training<-newData[inTrain,]
+testing<-newData[-inTrain,]
+
+```
+
+Now we use randomForest() function to train the data and fit the model.
+
+```{r}
+library(randomForest)
+rf<-randomForest(classe~.,data=training) # fit model with training data
+rf$confusion                            # confusion matrix of the fitted model
+```
+
+The confusion matrix above show us an accuracy of 99.55% on the training data. Since the resubstitution accuracy seems to be so high we expect a low out of sample error rate if there is no overfitting. 
+
+For cross validation we run our model on the test set.
+
+```{r}
+pred<-predict(rf,newdata=testing)     # run the model on the testing data
+```
+
+We compare the predicted outcomes by our model with the actual outcomes on a histogram.
+
+```{r}
+# convert the levels (A,B,C,D,E) into (1,2,3,4,5)
+predicted<-as.numeric(pred)       
+actual<-as.numeric(testing$classe)
+
+par(cex=0.75)                                       #fit the plot on the screen
+H<-hist(predicted-actual,label=TRUE,col="gray")     #get the histogram
+
+Acc<-(max(H$counts))/(sum(H$counts))                #get the accuracy 
+print(Acc)
+OSE<-1-Acc                                          #out of sample error
+print(OSE)
+```
+
+Since the accuracy of the testing data is very high we expect to have a very good model.
+
+Note: Preprocessing the features with pca have reduced the accuracy considerably while center and scaling also have reduced the accuracy but comparatively less. 
+
